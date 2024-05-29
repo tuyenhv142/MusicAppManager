@@ -14,7 +14,7 @@ import 'package:flutter_web_dashboard/views/widgets/header.dart';
 import 'package:flutter_web_dashboard/views/widgets/header_phone.dart';
 import 'package:flutter_web_dashboard/views/widgets/side_bar.dart';
 import 'package:get/get.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
+// import 'package:syncfusion_flutter_charts/charts.dart';
 
 import 'widgets/revenue_section_small.dart';
 
@@ -79,7 +79,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               children: [
                 !context.isPhone
-                    ? const Header()
+                    ? Header()
                     : HeaderPhone(drawerKey: _drawerKey),
                 Expanded(
                   child: ListView(
@@ -122,7 +122,7 @@ class _HomePageState extends State<HomePage> {
           onPressed: () {
             controller.nameController.clear();
             controller.emailController.clear();
-            addAdmin(context: context, type: 'Add', id: '');
+            addAdmin(context: context, id: '');
           },
           label: const Text("Add Admin"),
           icon: const Icon(Icons.add),
@@ -131,7 +131,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  addAdmin({BuildContext? context, String? type, String? id}) {
+  addAdmin({BuildContext? context, String? id}) {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
@@ -146,9 +146,9 @@ class _HomePageState extends State<HomePage> {
           key: controller.formKey,
           child: Column(
             children: [
-              Text(
-                "$type Admin",
-                style: const TextStyle(
+              const Text(
+                "Add Admin",
+                style: TextStyle(
                   color: Colors.black,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -219,15 +219,12 @@ class _HomePageState extends State<HomePage> {
                   height: 40,
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (controller.formKey.currentState!.validate()) {
-                      controller.saveOrUpdateAdmin(
-                        id!,
-                        type!,
-                      );
+                      await controller.saveOrUpdateAdmin(id!);
                     }
                   },
-                  child: Text(type == 'Add' ? 'Add' : 'Update'),
+                  child: const Text('Add'),
                 ),
               )
             ],

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:data_table_2/data_table_2.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/viewmodels/artist_controller.dart';
@@ -32,10 +33,16 @@ class _ArtistsPageState extends State<ArtistsPage> {
     });
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    controller.onClose();
+  Future<void> _pickImage(ArtistController controller) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      controller.setImage(file.bytes);
+    }
   }
 
   void confirmDeleteArtist(String id) {
@@ -88,7 +95,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
               child: Column(
                 children: [
                   !context.isPhone
-                      ? const Header()
+                      ? Header()
                       : HeaderPhone(drawerKey: _drawerKey),
                   Expanded(
                     child: ListView(
@@ -212,8 +219,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
                                                   onPressed: () {
                                                     controller.nameController
                                                         .text = artist['name'];
-                                                    controller.imgController
-                                                        .text = artist['img'];
+                                                    controller.setImage(null);
                                                     addOrEditArtist(
                                                       context: context,
                                                       type: 'Update',
@@ -259,7 +265,8 @@ class _ArtistsPageState extends State<ArtistsPage> {
         child: FloatingActionButton.extended(
           onPressed: () {
             controller.nameController.clear();
-            controller.imgController.clear();
+            // controller.imgController.clear();
+            // controller.setImage(null);
             addOrEditArtist(context: context, type: 'Add', id: '');
           },
           label: const Text("Add Artist"),
@@ -313,20 +320,24 @@ class _ArtistsPageState extends State<ArtistsPage> {
               const SizedBox(
                 height: 10,
               ),
-              TextFormField(
-                decoration: InputDecoration(
-                  hintText: 'Source Avatar',
-                  border: OutlineInputBorder(
+              GestureDetector(
+                onTap: () => _pickImage(controller),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Obx(() {
+                    return controller.selectedImage.value != null
+                        ? Image.memory(
+                            controller.selectedImage.value!,
+                            // fit: BoxFit.cover,
+                          )
+                        : const Center(child: Text('Tap to select an image'));
+                  }),
                 ),
-                controller: controller.imgController,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Source Avatar cannot be empty';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(
                 height: 10,
@@ -337,14 +348,14 @@ class _ArtistsPageState extends State<ArtistsPage> {
                   height: 40,
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
-                    controller.saveUpdateArtist(
-                      id!,
-                      type!,
-                    );
-                    controller.nameController.clear();
-                    controller.imgController.clear();
-                    setState(() {});
+                  onPressed: () async {
+                    if (controller.formKey.currentState!.validate()) {
+                      await controller.saveUpdateArtist(id!, type!);
+                      controller.nameController.clear();
+                      controller.setImage(null);
+                      // controller.imgController.clear();
+                      setState(() {});
+                    }
                   },
                   child: Text(type == 'Add' ? 'Add' : 'Update'),
                 ),

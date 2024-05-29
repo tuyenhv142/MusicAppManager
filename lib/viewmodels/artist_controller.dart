@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/models/artist.dart';
 import 'package:get/get.dart';
@@ -9,21 +12,34 @@ class ArtistController extends GetxController {
   FirebaseAuth auth = FirebaseAuth.instance;
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   TextEditingController nameController = TextEditingController();
-  TextEditingController imgController = TextEditingController();
-
-  @override
-  void onReady() {
-    super.onReady();
-  }
+  // TextEditingController imgController = TextEditingController();
+  // Uint8List? selectedImage;
+  var selectedImage = Rxn<Uint8List>();
 
   @override
   void onClose() {
     super.onClose();
     nameController.dispose();
-    imgController.dispose();
+    // imgController.dispose();
   }
 
-  void saveUpdateArtist(String id, String type) async {
+  void setImage(Uint8List? image) {
+    selectedImage.value = image;
+    update();
+  }
+
+  Future<String> uploadImage(Uint8List imageBytes) async {
+    Reference storageRef = FirebaseStorage.instance
+        .ref()
+        .child('AdminArtistImage')
+        .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+    UploadTask uploadTask = storageRef.putData(imageBytes);
+    TaskSnapshot snapshot = await uploadTask;
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
+  Future<void> saveUpdateArtist(String id, String type) async {
     final isValid = formKey.currentState!.validate();
     if (!isValid) {
       return;
@@ -33,11 +49,12 @@ class ArtistController extends GetxController {
     CollectionReference artistColl = firestore.collection("singer");
     String modifiedId = nameController.text.replaceAll(' ', '').toUpperCase();
     String dateEnter = DateTime.now().toIso8601String();
+    String downloadUrl = await uploadImage(selectedImage.value!);
 
     Artist artist = Artist(
-      id: id.isEmpty ? modifiedId : id,
+      // id: id.isEmpty ? modifiedId : id,
       name: nameController.text,
-      img: imgController.text,
+      img: downloadUrl,
       dateEnter: dateEnter,
     );
 
@@ -49,6 +66,7 @@ class ArtistController extends GetxController {
       }
       Get.back();
       Get.snackbar("Artist", "Successfully $type");
+      setImage(null);
     } catch (error) {
       Get.snackbar("Artist", "Error $type");
     }

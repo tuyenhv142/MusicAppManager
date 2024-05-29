@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/models/banner.dart';
 import 'package:get/get.dart';
@@ -9,21 +11,31 @@ class BannerController extends GetxController {
   FirebaseAuth auth = FirebaseAuth.instance;
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   TextEditingController titleController = TextEditingController();
-  TextEditingController imgController = TextEditingController();
-
-  @override
-  void onReady() {
-    super.onReady();
-  }
+  Uint8List? selectedImage;
 
   @override
   void onClose() {
     super.onClose();
     titleController.dispose();
-    imgController.dispose();
   }
 
-  void saveUpdateBanner(String id, String type) async {
+  void setImage(Uint8List? image) {
+    selectedImage = image;
+    update();
+  }
+
+  Future<String> uploadImage(Uint8List imageBytes) async {
+    Reference storageRef = FirebaseStorage.instance
+        .ref()
+        .child('AdminBannerImage')
+        .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+    UploadTask uploadTask = storageRef.putData(imageBytes);
+    TaskSnapshot snapshot = await uploadTask;
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
+  Future<void> saveUpdateBanner(String id, String type) async {
     final isValid = formKey.currentState!.validate();
     if (!isValid) {
       return;
@@ -31,13 +43,12 @@ class BannerController extends GetxController {
     formKey.currentState!.save();
 
     CollectionReference bannerColl = firestore.collection("banner");
-
+    String downloadUrl = await uploadImage(selectedImage!);
     Banner1 banner = Banner1(
-      id: id,
       title: titleController.text,
-      img: imgController.text,
+      img: downloadUrl,
     );
-
+    setImage(null);
     try {
       if (id.isEmpty) {
         await bannerColl.add(banner.toJson());

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:data_table_2/data_table_2.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/viewmodels/banner_controller.dart';
@@ -17,15 +18,15 @@ class BannersPage extends StatefulWidget {
 }
 
 class _BannersPageState extends State<BannersPage> {
-  final BannerController controller = BannerController();
+  final BannerController controller = Get.put(BannerController());
   TextEditingController searchController = TextEditingController();
   String searchQuery = '';
 
   final GlobalKey<ScaffoldState> _drawerKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
-    controller.onInit();
     searchController.addListener(() {
       setState(() {
         searchQuery = searchController.text;
@@ -33,10 +34,16 @@ class _BannersPageState extends State<BannersPage> {
     });
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    controller.onClose();
+  Future<void> _pickImage(BannerController controller) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      controller.setImage(file.bytes);
+    }
   }
 
   void confirmDeleteBanner(String id) {
@@ -89,7 +96,7 @@ class _BannersPageState extends State<BannersPage> {
               child: Column(
                 children: [
                   !context.isPhone
-                      ? const Header()
+                      ? Header()
                       : HeaderPhone(drawerKey: _drawerKey),
                   Expanded(
                     child: ListView(
@@ -201,8 +208,7 @@ class _BannersPageState extends State<BannersPage> {
                                                   onPressed: () {
                                                     controller.titleController
                                                         .text = banner['title'];
-                                                    controller.imgController
-                                                        .text = banner['img'];
+                                                    controller.setImage(null);
                                                     addOrEditBanner(
                                                       context: context,
                                                       type: 'Update',
@@ -247,10 +253,10 @@ class _BannersPageState extends State<BannersPage> {
         alignment: const Alignment(0.95, 0.95),
         child: FloatingActionButton.extended(
           onPressed: () {
-            controller.imgController.clear();
+            controller.titleController.clear();
             addOrEditBanner(context: context, type: 'Add', id: '');
           },
-          label: const Text("Add Artist"),
+          label: const Text("Add Banner"),
           icon: const Icon(Icons.add),
         ),
       ),
@@ -286,14 +292,14 @@ class _BannersPageState extends State<BannersPage> {
               TextFormField(
                 controller: controller.titleController,
                 decoration: InputDecoration(
-                  hintText: 'Fullname',
+                  hintText: 'Title',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Fullname cannot be empty';
+                    return 'Title cannot be empty';
                   }
                   return null;
                 },
@@ -301,20 +307,24 @@ class _BannersPageState extends State<BannersPage> {
               const SizedBox(
                 height: 10,
               ),
-              TextFormField(
-                decoration: InputDecoration(
-                  hintText: 'Source Banner',
-                  border: OutlineInputBorder(
+              GestureDetector(
+                onTap: () => _pickImage(controller),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  child: GetBuilder<BannerController>(
+                    builder: (controller) {
+                      return controller.selectedImage != null
+                          ? Image.memory(controller.selectedImage!)
+                          // fit: BoxFit.cover)
+                          : const Center(child: Text('Tap to select an image'));
+                    },
+                  ),
                 ),
-                controller: controller.imgController,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Source Avatar cannot be empty';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(
                 height: 10,
@@ -325,17 +335,17 @@ class _BannersPageState extends State<BannersPage> {
                   height: 40,
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
-                    controller.saveUpdateBanner(
-                      id!,
-                      type!,
-                    );
-                    controller.imgController.clear();
-                    setState(() {});
+                  onPressed: () async {
+                    if (controller.formKey.currentState!.validate()) {
+                      await controller.saveUpdateBanner(id!, type!);
+                      controller.titleController.clear();
+                      controller.setImage(null);
+                      setState(() {});
+                    }
                   },
                   child: Text(type == 'Add' ? 'Add' : 'Update'),
                 ),
-              )
+              ),
             ],
           ),
         ),

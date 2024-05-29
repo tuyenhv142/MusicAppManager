@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/routing/app_pages.dart';
+import 'package:flutter_web_dashboard/viewmodels/admin_controller.dart';
 import 'package:flutter_web_dashboard/views/widgets/custom_text.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Header extends StatelessWidget {
-  const Header({Key? key}) : super(key: key);
+  Header({Key? key}) : super(key: key);
+
+  final AdminController controller =
+      Get.put(AdminController()); // Ensure controller is properly initialized
+
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   Future<String> _getEmailFromPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -36,23 +42,124 @@ class Header extends StatelessWidget {
                       Icons.settings,
                       color: dark,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      Get.bottomSheet(
+                        Container(
+                          padding: const EdgeInsets.only(
+                              top: 10, left: 10, right: 10),
+                          decoration: const BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                            ),
+                            color: Colors.white,
+                          ),
+                          child: Form(
+                            key: formKey,
+                            child: Column(
+                              children: [
+                                const Text(
+                                  "Change password",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextFormField(
+                                  controller: controller.passwordController,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'Old Password',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Old Password cannot be empty';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                TextFormField(
+                                  controller: controller.newPasswordController,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'New Password',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'New Password cannot be empty';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                TextFormField(
+                                  controller:
+                                      controller.confirmPasswordController,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'Re-enter New Password',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Re-enter New Password cannot be empty';
+                                    }
+                                    if (value !=
+                                        controller.newPasswordController.text) {
+                                      return 'Passwords do not match';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                ConstrainedBox(
+                                  constraints: BoxConstraints.tightFor(
+                                    width: Get.width,
+                                    height: 40,
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      if (formKey.currentState!.validate()) {
+                                        await controller.updatePassword();
+                                        controller.passwordController.clear();
+                                        controller.newPasswordController
+                                            .clear();
+                                        controller.confirmPasswordController
+                                            .clear();
+                                      }
+                                    },
+                                    child: const Text('Update'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   Container(
                     width: 1,
                     height: 22,
                     color: lightGrey,
                   ),
-                  const SizedBox(
-                    width: 24,
-                  ),
+                  const SizedBox(width: 24),
                   CustomText(
                     text: userEmail,
                     color: lightGrey,
                   ),
-                  const SizedBox(
-                    width: 16,
-                  ),
+                  const SizedBox(width: 16),
                   Container(
                     decoration: BoxDecoration(
                       color: active.withOpacity(.5),
@@ -74,17 +181,13 @@ class Header extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(
-                    width: 24,
-                  ),
+                  const SizedBox(width: 24),
                   Container(
                     width: 1,
                     height: 22,
                     color: lightGrey,
                   ),
-                  const SizedBox(
-                    width: 10,
-                  ),
+                  const SizedBox(width: 10),
                   Stack(
                     children: [
                       IconButton(

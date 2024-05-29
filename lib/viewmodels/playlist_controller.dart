@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/models/playlist.dart';
 import 'package:get/get.dart';
@@ -9,25 +12,35 @@ class PlaylistController extends GetxController {
   FirebaseAuth auth = FirebaseAuth.instance;
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   TextEditingController nameController = TextEditingController();
-  TextEditingController imgController = TextEditingController();
   TextEditingController contentController = TextEditingController();
   var tracks = [].obs;
   var selectedTracks = <String>[].obs;
-
-  @override
-  void onReady() {
-    super.onReady();
-  }
+  var selectedImage = Rxn<Uint8List>();
 
   @override
   void onClose() {
     super.onClose();
     nameController.dispose();
-    imgController.dispose();
     contentController.dispose();
   }
 
-  void saveUpdatePlaylist(String id, String type) async {
+  void setImage(Uint8List? image) {
+    selectedImage.value = image;
+    update();
+  }
+
+  Future<String> uploadImage(Uint8List imageBytes) async {
+    Reference storageRef = FirebaseStorage.instance
+        .ref()
+        .child('AdminPlaylistImage')
+        .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+    UploadTask uploadTask = storageRef.putData(imageBytes);
+    TaskSnapshot snapshot = await uploadTask;
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
+  Future<void> saveUpdatePlaylist(String id, String type) async {
     final isValid = formKey.currentState!.validate();
     if (!isValid) {
       return;
@@ -36,11 +49,11 @@ class PlaylistController extends GetxController {
 
     CollectionReference playlistColl = firestore.collection("playlist");
     String dateEnter = DateTime.now().toIso8601String();
+    String downloadUrl = await uploadImage(selectedImage.value!);
 
     Playlist playlist = Playlist(
-      id: id,
       name: nameController.text,
-      img: imgController.text,
+      img: downloadUrl,
       content: contentController.text,
       dateEnter: dateEnter,
       tracks: selectedTracks.toList(),

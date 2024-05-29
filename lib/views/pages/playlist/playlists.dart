@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:data_table_2/data_table_2.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/viewmodels/playlist_controller.dart';
@@ -38,6 +39,18 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
   void dispose() {
     super.dispose();
     controller.onClose();
+  }
+
+  Future<void> _pickImage(PlaylistController controller) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      controller.setImage(file.bytes);
+    }
   }
 
   void confirmDeletePlaylist(String id) {
@@ -146,7 +159,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
               child: Column(
                 children: [
                   !context.isPhone
-                      ? const Header()
+                      ? Header()
                       : HeaderPhone(drawerKey: _drawerKey),
                   Expanded(
                     child: ListView(
@@ -308,8 +321,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
                                                     controller.nameController
                                                             .text =
                                                         playlist['name'];
-                                                    controller.imgController
-                                                        .text = playlist['img'];
+                                                    controller.setImage(null);
                                                     controller.contentController
                                                             .text =
                                                         playlist['content'];
@@ -370,7 +382,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
         child: FloatingActionButton.extended(
           onPressed: () {
             controller.nameController.clear();
-            controller.imgController.clear();
+            controller.setImage(null);
             controller.contentController.clear();
             addOrEditPLaylist(context: context, type: 'Add', id: '');
           },
@@ -443,20 +455,24 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
               const SizedBox(
                 height: 10,
               ),
-              TextFormField(
-                decoration: InputDecoration(
-                  hintText: 'Source Avatar',
-                  border: OutlineInputBorder(
+              GestureDetector(
+                onTap: () => _pickImage(controller),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Obx(() {
+                    return controller.selectedImage.value != null
+                        ? Image.memory(
+                            controller.selectedImage.value!,
+                            // fit: BoxFit.cover,
+                          )
+                        : const Center(child: Text('Tap to select an image'));
+                  }),
                 ),
-                controller: controller.imgController,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Source Avatar cannot be empty';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(
                 height: 10,
@@ -467,14 +483,10 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
                   height: 40,
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (controller.formKey.currentState!.validate()) {
-                      controller.saveUpdatePlaylist(
-                        id!,
-                        type!,
-                      );
+                      await controller.saveUpdatePlaylist(id!, type!);
                       controller.nameController.clear();
-                      controller.imgController.clear();
                       controller.contentController.clear();
                       setState(() {});
                     }

@@ -11,6 +11,8 @@ class AdminController extends GetxController {
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+  TextEditingController newPasswordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
   CollectionReference adminColl =
       FirebaseFirestore.instance.collection("admin");
 
@@ -20,6 +22,8 @@ class AdminController extends GetxController {
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
   }
 
   void login(String email, String password) async {
@@ -50,7 +54,51 @@ class AdminController extends GetxController {
     }
   }
 
-  void saveOrUpdateAdmin(String id, String type) async {
+  Future<void> updatePassword() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String email = prefs.getString('email') ?? '';
+
+    if (email.isEmpty) {
+      Get.snackbar("Admin", "Error: Email not found in SharedPreferences");
+      return;
+    }
+
+    String oldPassword = passwordController.text;
+    String newPassword = newPasswordController.text;
+
+    if (oldPassword.isEmpty || newPassword.isEmpty) {
+      Get.snackbar("Admin", "Passwords cannot be empty");
+      return;
+    }
+
+    try {
+      final query =
+          await adminColl.where('email', isEqualTo: email).limit(1).get();
+      if (query.docs.isNotEmpty) {
+        var adminDoc = query.docs.first;
+        var storedPassword = adminDoc.get("password");
+
+        if (oldPassword != storedPassword) {
+          Get.snackbar("Admin", "Old password is incorrect.");
+          return;
+        }
+
+        await adminColl.doc(adminDoc.id).update({
+          'password': newPassword,
+        });
+
+        await prefs.setString('password', newPassword);
+        Get.back();
+        Get.snackbar("Admin", "Password updated successfully");
+      } else {
+        Get.snackbar("Admin", "Admin not found. Please try again.");
+      }
+    } catch (error) {
+      Get.snackbar("Admin", "Error: $error");
+    }
+  }
+
+  Future<void> saveOrUpdateAdmin(String id) async {
     final isValid = formKey.currentState!.validate();
     if (!isValid) {
       return;
@@ -68,7 +116,7 @@ class AdminController extends GetxController {
     try {
       await adminColl.add(admin.toJson());
       Get.back();
-      Get.snackbar("Admin", "Successfully $type");
+      Get.snackbar("Admin", "Successfully Add");
     } catch (error) {
       Get.snackbar("Admin", "Error: $error");
     }

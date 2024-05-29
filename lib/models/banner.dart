@@ -1,17 +1,17 @@
 class Banner1 {
-  String id;
+  // String id;
   String title;
   String img;
 
   Banner1({
-    required this.id,
+    // required this.id,
     required this.title,
     required this.img,
   });
 
   factory Banner1.fromJson(Map<String, dynamic> json) {
     return Banner1(
-      id: json['id'] ?? '',
+      // id: json['id'] ?? '',
       title: json['title'] ?? '',
       img: json['img'] ?? '',
     );
@@ -19,7 +19,7 @@ class Banner1 {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      // 'id': id,
       'title': title,
       'img': img,
     };

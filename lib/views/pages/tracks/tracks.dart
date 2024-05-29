@@ -3,8 +3,10 @@ import 'dart:html';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/viewmodels/track_controller.dart';
 import 'package:flutter_web_dashboard/views/widgets/custom_text.dart';
@@ -95,6 +97,18 @@ class _TracksPageState extends State<TracksPage> {
     );
   }
 
+  Future<void> _pickImage(TrackController controller) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      controller.setImage(file.bytes);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -135,7 +149,7 @@ class _TracksPageState extends State<TracksPage> {
               child: Column(
                 children: [
                   !context.isPhone
-                      ? const Header()
+                      ? Header()
                       : HeaderPhone(drawerKey: _drawerKey),
                   const SizedBox(height: 10),
                   Expanded(
@@ -276,9 +290,7 @@ class _TracksPageState extends State<TracksPage> {
                                                       controller.titleController
                                                               .text =
                                                           track['title'];
-                                                      controller.imageController
-                                                              .text =
-                                                          track['image'];
+                                                      controller.setImage(null);
                                                       controller
                                                               .singerIdController
                                                               .text =
@@ -365,183 +377,188 @@ class _TracksPageState extends State<TracksPage> {
       });
     }
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+            color: Colors.white,
           ),
-          color: Colors.white,
-        ),
-        child: Form(
-          key: controller.formKey,
-          child: Column(
-            children: [
-              Text(
-                "$type Track",
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              TextFormField(
-                controller: controller.titleController,
-                decoration: InputDecoration(
-                  hintText: 'Title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+          child: Form(
+            key: controller.formKey,
+            child: Column(
+              children: [
+                Text(
+                  "$type Track",
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Title cannot be empty';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('music_sources')
-                    .orderBy('uploadedAt', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    List<QueryDocumentSnapshot> documents = snapshot.data!.docs;
-                    List<DropdownMenuItem<String>> dropdownItems =
-                        documents.map((doc) {
-                      return DropdownMenuItem<String>(
-                        value: doc['url'],
-                        child: Text(doc['name']),
-                      );
-                    }).toList();
-
-                    return DropdownButtonFormField(
-                      itemHeight: 48,
-                      items: dropdownItems,
-                      onChanged: (newValue) {
-                        setState(() {
-                          selectedArtistSource = newValue.toString();
-                          controller.sourceController.text =
-                              selectedArtistSource!;
-                        });
-                      },
-                      value: selectedArtistSource,
-                      hint: const Text('Select a soucre music'),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              ConstrainedBox(
-                constraints:
-                    BoxConstraints.tightFor(width: Get.width, height: 40),
-                child: ElevatedButton(
-                  onPressed: uploadFile,
-                  child: const Text('Upload MP3 File'),
+                const SizedBox(
+                  height: 10,
                 ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('singer')
-                    .orderBy('name')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    List<DropdownMenuItem<String>> dropdownItems =
-                        snapshot.data!.docs.map((DocumentSnapshot document) {
-                      return DropdownMenuItem<String>(
-                        value: document.id,
-                        child: Text(document['name']),
-                      );
-                    }).toList();
-
-                    return DropdownButtonFormField(
-                      itemHeight: 48,
-                      items: dropdownItems,
-                      onChanged: (newValue) {
-                        setState(() {
-                          selectedArtistName = newValue.toString();
-                          controller.singerIdController.text =
-                              selectedArtistName!;
-                        });
-                      },
-                      value: selectedArtistName,
-                      hint: const Text('Select a Artist'),
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              TextFormField(
-                controller: controller.imageController,
-                decoration: InputDecoration(
-                  hintText: 'Source Avatar',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                TextFormField(
+                  controller: controller.titleController,
+                  decoration: InputDecoration(
+                    hintText: 'Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Avatar cannot be empty';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              ConstrainedBox(
-                constraints:
-                    BoxConstraints.tightFor(width: Get.width, height: 40),
-                child: ElevatedButton(
-                  onPressed: () {
-                    controller.saveUpdateTrack(
-                      id,
-                      type,
-                    );
-                    controller.titleController.clear();
-                    controller.sourceController.clear();
-                    // controller.singerIdController.clear();
-                    // controller.imageController.clear();
-                    setState(() {});
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Title cannot be empty';
+                    }
+                    return null;
                   },
-                  child: Text(type!),
                 ),
-              ),
-            ],
+                const SizedBox(
+                  height: 10,
+                ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('music_sources')
+                      .orderBy('uploadedAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      List<QueryDocumentSnapshot> documents =
+                          snapshot.data!.docs;
+                      List<DropdownMenuItem<String>> dropdownItems =
+                          documents.map((doc) {
+                        return DropdownMenuItem<String>(
+                          value: doc['url'],
+                          child: Text(doc['name']),
+                        );
+                      }).toList();
+
+                      return DropdownButtonFormField(
+                        itemHeight: 48,
+                        items: dropdownItems,
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedArtistSource = newValue.toString();
+                            controller.sourceController.text =
+                                selectedArtistSource!;
+                          });
+                        },
+                        value: selectedArtistSource,
+                        hint: const Text('Select a soucre music'),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      );
+                    } else {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                ConstrainedBox(
+                  constraints:
+                      BoxConstraints.tightFor(width: Get.width, height: 40),
+                  child: ElevatedButton(
+                    onPressed: uploadFile,
+                    child: const Text('Upload MP3 File'),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('singer')
+                      .orderBy('name')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      List<DropdownMenuItem<String>> dropdownItems =
+                          snapshot.data!.docs.map((DocumentSnapshot document) {
+                        return DropdownMenuItem<String>(
+                          value: document.id,
+                          child: Text(document['name']),
+                        );
+                      }).toList();
+
+                      return DropdownButtonFormField(
+                        itemHeight: 48,
+                        items: dropdownItems,
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedArtistName = newValue.toString();
+                            controller.singerIdController.text =
+                                selectedArtistName!;
+                          });
+                        },
+                        value: selectedArtistName,
+                        hint: const Text('Select a Artist'),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      );
+                    } else {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                GestureDetector(
+                  onTap: () => _pickImage(controller),
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Obx(() {
+                      return controller.selectedImage.value != null
+                          ? Image.memory(
+                              controller.selectedImage.value!,
+                            )
+                          : const Center(child: Text('Tap to select an image'));
+                    }),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+                ConstrainedBox(
+                  constraints:
+                      BoxConstraints.tightFor(width: Get.width, height: 40),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (controller.formKey.currentState!.validate()) {
+                        await controller.saveUpdateTrack(id, type);
+                        controller.titleController.clear();
+                        controller.sourceController.clear();
+                        // controller.singerIdController.clear();
+                        // controller.imageController.clear();
+                        setState(() {});
+                      }
+                    },
+                    child: Text(type!),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
