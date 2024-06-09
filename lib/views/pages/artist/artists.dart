@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_dashboard/helpers/constants/style.dart';
 import 'package:flutter_web_dashboard/viewmodels/artist_controller.dart';
+import 'package:flutter_web_dashboard/viewmodels/track_controller.dart';
 import 'package:flutter_web_dashboard/views/widgets/custom_text.dart';
 import 'package:flutter_web_dashboard/views/widgets/header.dart';
 import 'package:flutter_web_dashboard/views/widgets/header_phone.dart';
@@ -18,14 +19,15 @@ class ArtistsPage extends StatefulWidget {
 }
 
 class _ArtistsPageState extends State<ArtistsPage> {
-  final ArtistController controller = ArtistController();
+  final ArtistController artirtController = ArtistController();
+  final TrackController trackController = TrackController();
   TextEditingController searchController = TextEditingController();
   String searchQuery = '';
   final GlobalKey<ScaffoldState> _drawerKey = GlobalKey();
   @override
   void initState() {
     super.initState();
-    controller.onInit();
+    artirtController.onInit();
     searchController.addListener(() {
       setState(() {
         searchQuery = searchController.text;
@@ -51,7 +53,9 @@ class _ArtistsPageState extends State<ArtistsPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("Confirm Delete"),
-          content: const Text("Are you sure you want to delete this artist?"),
+          content: const Text(
+            " If you delete this artist, all of the artist's tracks will be deleted. Are you sure you want to delete this artist?",
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -61,7 +65,8 @@ class _ArtistsPageState extends State<ArtistsPage> {
             ),
             TextButton(
               onPressed: () {
-                controller.deleteArtist(id);
+                artirtController.deleteArtist(id);
+                trackController.deleteTracksBySinger(id);
                 Navigator.of(context).pop();
               },
               child: const Text("Confirm"),
@@ -217,9 +222,11 @@ class _ArtistsPageState extends State<ArtistsPage> {
                                                 IconButton(
                                                   icon: const Icon(Icons.edit),
                                                   onPressed: () {
-                                                    controller.nameController
+                                                    artirtController
+                                                        .nameController
                                                         .text = artist['name'];
-                                                    controller.setImage(null);
+                                                    artirtController
+                                                        .setImage(null);
                                                     addOrEditArtist(
                                                       context: context,
                                                       type: 'Update',
@@ -264,7 +271,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
         alignment: const Alignment(0.95, 0.95),
         child: FloatingActionButton.extended(
           onPressed: () {
-            controller.nameController.clear();
+            artirtController.nameController.clear();
             // controller.imgController.clear();
             // controller.setImage(null);
             addOrEditArtist(context: context, type: 'Add', id: '');
@@ -288,7 +295,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
           color: Colors.white,
         ),
         child: Form(
-          key: controller.formKey,
+          key: artirtController.formKey,
           child: Column(
             children: [
               Text(
@@ -309,7 +316,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                controller: controller.nameController,
+                controller: artirtController.nameController,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Name cannot be empty';
@@ -321,7 +328,7 @@ class _ArtistsPageState extends State<ArtistsPage> {
                 height: 10,
               ),
               GestureDetector(
-                onTap: () => _pickImage(controller),
+                onTap: () => _pickImage(artirtController),
                 child: Container(
                   height: 200,
                   width: double.infinity,
@@ -330,9 +337,9 @@ class _ArtistsPageState extends State<ArtistsPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Obx(() {
-                    return controller.selectedImage.value != null
+                    return artirtController.selectedImage.value != null
                         ? Image.memory(
-                            controller.selectedImage.value!,
+                            artirtController.selectedImage.value!,
                             // fit: BoxFit.cover,
                           )
                         : const Center(child: Text('Tap to select an image'));
@@ -349,10 +356,10 @@ class _ArtistsPageState extends State<ArtistsPage> {
                 ),
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (controller.formKey.currentState!.validate()) {
-                      await controller.saveUpdateArtist(id!, type!);
-                      controller.nameController.clear();
-                      controller.setImage(null);
+                    if (artirtController.formKey.currentState!.validate()) {
+                      await artirtController.saveUpdateArtist(id!, type!);
+                      artirtController.nameController.clear();
+                      artirtController.setImage(null);
                       // controller.imgController.clear();
                       setState(() {});
                     }

@@ -85,4 +85,26 @@ class TrackController extends GetxController {
       Get.snackbar("Track", "Successfully deleted");
     });
   }
+
+  void deleteTracksBySinger(String singerId) async {
+    CollectionReference trackColl = firestore.collection("track");
+
+    try {
+      QuerySnapshot querySnapshot =
+          await trackColl.where('singerId', isEqualTo: singerId).get();
+
+      WriteBatch batch = firestore.batch();
+      for (QueryDocumentSnapshot doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // Get.back();
+      Get.snackbar(
+          "Tracks", "All tracks for the singer have been successfully deleted");
+    } catch (e) {
+      print("Error deleting tracks: $e");
+      Get.snackbar("Error", "Failed to delete tracks for the singer");
+    }
+  }
 }
